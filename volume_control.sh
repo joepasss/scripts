@@ -9,25 +9,18 @@ show_album_art=true
 show_music_in_volume_indicator=true
 
 function get_mute {
-  if wpctl get-volume @DEFAULT_SINK@ | grep -q '\[MUTED\]'; then
-    echo "MUTED"
-  else
-    echo "UNMUTED"
-  fi
+	pactl get-sink-mute @DEFAULT_SINK@ | grep -Po '(?<=Mute: )(yes|no)'
 }
 
 function get_volume {
-  local vol=$(wpctl get-volume @DEFAULT_SINK@ | grep -oP '\d+\.\d+')
-  volume=$(echo "$vol * 100" | bc | awk '{print int($1)}')
-
-  echo $volume
+	pactl get-sink-volume @DEFAULT_SINK@ | grep -Po '[0-9]{1,3}(?=%)' | head -1
 }
 
 function get_volume_icon {
   volume=$(get_volume)
   mute=$(get_mute)
 
-  if [ "$volume" -eq 0 ] || [ "$mute" == "MUTED" ]; then
+  if [ "$volume" -eq 0 ] || [ "$mute" == "yes" ]; then
     volume_icon=""
   elif [ "$volume" -lt 50 ]; then
     volume_icon=" "
@@ -101,26 +94,25 @@ function show_music_notif {
 case $1 in
 up)
   volume=$(get_volume)
-
-  wpctl set-mute @DEFAULT_SINK@ 0
+	pactl set-sink-mute @DEFAULT_SINK@ 0
 
   if [ $(("$volume" + "$volume_step")) -gt $max_volume ]; then
-    wpctl set-volume @DEFAULT_SINK@ "$max_volume"%
+    pactl set-sink-volume @DEFAULT_SINK@ "$max_volume"%
   else
-    wpctl set-volume @DEFAULT_SINK@ "$volume_step"%+
+    pactl set-sink-volume @DEFAULT_SINK@ +"$volume_step"%
   fi
 
   show_volume_notif
   ;;
 
 down)
-  wpctl set-volume @DEFAULT_SINK@ "$volume_step"%-
+  pactl set-sink-volume @DEFAULT_SINK@ -"$volume_step"%
 
   show_volume_notif
   ;;
 
 mute)
-  wpctl set-mute @DEFAULT_SINK@ toggle
+  pactl set-sink-mute @DEFAULT_SINK@ toggle
 
   show_volume_notif
   ;;
