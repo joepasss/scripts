@@ -10,8 +10,8 @@ fi
 # POS OPTIONS
 #
 # LAPTOP + BENQ SPREAD
-POS_SPREAD_EDP="0x630"
-POS_SPREAD_DP="3600x0"
+POS_SPREAD_EDP="5120x630"
+POS_SPREAD_DP="0x0"
 #
 # LAPTOP + BENQ STACK
 POS_STACK_EDP="760x2880"
@@ -78,12 +78,10 @@ for monitor in "${MONITORS[@]}"; do
         --output "$monitor" \
         --mode 2560x1440 \
         --scale 2 \
+				--primary \
         --pos "$POS_DP"
     fi
   fi
 done
 
-brightnessctl set 100%
-
-# wallpaper
-/home/joepasss/scripts/wallpaper.sh
+feh --bg-scale /home/joepasss/wallpaper/wallpaper.jpg
