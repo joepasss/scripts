@@ -9,4 +9,7 @@ if test -z "${XDG_RUNTIME_DIR}"; then
   fi
 fi
 
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 dbus-run-session sway
