@@ -12,4 +12,5 @@ if [[ $lid_state == 'closed' ]]; then
   fi
 else
   swaymsg output eDP-1 enable
+  brightnessctl set 100%
 fi

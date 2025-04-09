@@ -25,7 +25,7 @@ if [[ "$ext_monitor" == "1" ]]; then
     model=$(ddcutil --display "$disp" capabilities | grep "Model:" | awk '{print $2}')
 
     if [[ "$model" == "PD2506Q" ]]; then
-      input_src=$(ddcutil --display 2 getvcp 60 | awk -F'sl=0x' '{print $2}' | cut -c1-2)
+      input_src=$(ddcutil --display "$disp" getvcp 60 | awk -F'sl=0x' '{print $2}' | cut -c1-2)
       output=$(swaymsg -t get_outputs | jq -r '.[] | "\(.name): \(.model)"' | grep -i "$model" | awk -F: '{print $1}')
 
       if [[ "$input_src" != "13" ]]; then
