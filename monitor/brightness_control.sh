@@ -3,15 +3,6 @@
 brightness_step=5
 notification_timeout=1000
 
-function use_ddcutil {
-  if ddcutil detect 2>/dev/null | grep -q "VCP version"; then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
-ext_monitor=$(use_ddcutil)
 lid_state=$(awk '{print $2}' /proc/acpi/button/lid/LID/state)
 
 function set_brightness {
@@ -19,26 +10,9 @@ function set_brightness {
   if [ "$lid_state" = 'open' ]; then
     brightnessctl set "$value"%
   fi
-
-  if [ "$ext_monitor" -eq 1 ]; then
-    for disp in $(ddcutil detect | grep "Display" | awk '{print $2}'); do
-      model=$(ddcutil --display "$disp" capabilities | grep "Model:" | awk '{print $2}')
-
-      if [[ "$model" == "PD2506Q" ]]; then
-        input_src=$(ddcutil --display 2 getvcp 60 | awk -F'sl=0x' '{print $2}' | cut -c1-2)
-
-        if [[ "$input_src" == "13" ]]; then
-          ddcutil --display "$disp" setvcp 10 "$value"
-        fi
-      else
-        ddcutil --display "$disp" setvcp 10 "$value"
-      fi
-
-    done
-  fi
 }
 
-function get_brightness_eDP {
+function get_brightness {
   local current
   local max
 
@@ -46,18 +20,6 @@ function get_brightness_eDP {
   max="$(brightnessctl m)"
 
   echo "$((current * 100 / max))"
-}
-
-function get_brightness_ext {
-  ddcutil getvcp 10 | awk -F 'current value = |,' '{print $2}' | xargs
-}
-
-function get_brightness {
-  if [ "$lid_state" = 'open' ]; then
-    get_brightness_eDP
-  else
-    get_brightness_ext
-  fi
 }
 
 function get_brightness_icon {
