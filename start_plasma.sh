@@ -9,4 +9,4 @@ if test -z "${XDG_RUNTIME_DIR}"; then
   fi
 fi
 
-exec dbus-run-session sway
+dbus-run-session startplasma-wayland

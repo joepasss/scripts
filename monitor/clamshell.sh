@@ -5,11 +5,11 @@ is_connected=$(cat /sys/class/power_supply/AC/online)
 
 if [[ $lid_state == 'closed' ]]; then
   if [[ "$is_connected" == "1" ]]; then
-    swaymsg output eDP-1 disable
+    xrandr --output eDP --off
   else
     sudo pm-suspend
   fi
 else
-  swaymsg output eDP-1 enable
+  xrandr --output eDP --enable
   brightnessctl set 100%
 fi
