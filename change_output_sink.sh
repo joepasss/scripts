@@ -2,17 +2,20 @@
 
 selected=$(pactl list short sinks | while read -r _ name _; do
   label="$name"
-  if echo "$name" | grep -qi "usb"; then
+  lower_name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
+
+  if [[ "$lower_name" == *usb* ]]; then
     label="🎚️ USB DAC ($name)"
-  elif echo "$name" | grep -qi "bluez"; then
+  elif [[ "$lower_name" == *bluez* ]]; then
     label="🎧 Bluetooth ($name)"
-  elif echo "$name" | grep -qi "hdmi"; then
+  elif [[ "$lower_name" == *hdmi* ]]; then
     label="📺 HDMI ($name)"
-  elif echo "$name" | grep -qi "pci"; then
+  elif [[ "$lower_name" == *pci* ]]; then
     label="📺 PCI ($name)"
   fi
+
   echo "$label|$name"
-done | fuzzel --dmenu -p "Select Sink" | cut -d '|' -f2)
+done | rofi -dmenu -p "Select Sink" | cut -d '|' -f2)
 
 if [[ -n "$selected" ]]; then
   pactl set-default-sink "$selected"
