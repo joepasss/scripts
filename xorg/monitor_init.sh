@@ -24,10 +24,14 @@ for disp in "${displays[@]}"; do
     xrandr --output "$disp" \
       --scale 1 \
       --mode 2880x1800
-  else
+  elif [[ "$disp" == "DisplayPort"* ]]; then
     xrandr --output "$disp" \
       --scale 1.5 \
       --mode 2560x1440
+  elif [[ "$disp" == "HDMI"* ]]; then
+    xrandr --output "$disp" \
+      --scale 1.5 \
+      --mode 3440x1440
   fi
 done
 
