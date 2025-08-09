@@ -1,54 +1,108 @@
 #!/bin/bash
 set -e
 
-lid_state=$(awk '{print $2}' /proc/acpi/button/lid/LID/state)
+######## DEPENDENCIES ########
+
+# jq-1.8.1
+# brightnessctl
+# nitrogen
+
+##############################
+
+### PATH VARS
+SCRIPT_PATH=$(dirname "$(realpath "$0")")
+MONITOR_INFO_FILE="$SCRIPT_PATH/monitor_info.json"
+TEMP_JSON_FILE="$SCRIPT_PATH/temp.json"
+
+### GLOBAL VARS
+LID_STATE=$(awk '{print $2}' /proc/acpi/button/lid/LID/state)
+
+### FUNCTIONS
+function write_field() {
+  local key=$1
+  local value=$2
+
+  if [[ ! -f $TEMP_JSON_FILE ]]; then
+    touch "$TEMP_JSON_FILE"
+    echo "{}" >"$TEMP_JSON_FILE"
+  fi
+
+  new_field=$(jq --arg key "$key" \
+    --arg value "$value" \
+    '. += {$key: $value}' \
+    "$TEMP_JSON_FILE")
+  echo "$new_field" >"$TEMP_JSON_FILE"
+}
+
+function cleanup() {
+  if [[ -f $TEMP_JSON_FILE ]]; then
+    rm -rf "$TEMP_JSON_FILE"
+  fi
+}
+
+function write_new_monitor() {
+  if [[ ! -f $TEMP_JSON_FILE ]]; then
+    echo "ERROR!: no new monitor information!"
+    exit 1
+  fi
+
+  local new_mon
+  local new_json
+
+  new_mon=$(<"$TEMP_JSON_FILE")
+  new_json=$(jq --argjson m "$new_mon" '.monitors += [$m]' "$MONITOR_INFO_FILE")
+
+  echo "$new_json" >"$MONITOR_INFO_FILE"
+  cleanup
+}
+
 readarray -t displays < <(xrandr | grep " connected" | awk '{print $1}')
 
-# POS
-pos_edp="0x0"
-
-if [[ "${#displays[@]}" -eq 1 && "${displays[0]}" == "eDP" ]]; then
-  pos_edp="0x0"
-else
-  pos_edp="480x2160"
+if [[ ! -f "$MONITOR_INFO_FILE" ]]; then
+  touch "$MONITOR_INFO_FILE"
+  echo "{\"monitors\":[]}" >"$MONITOR_INFO_FILE"
 fi
 
-# reset
 for disp in "${displays[@]}"; do
-  xrandr --output "$disp" --off
-done
+  EDID=$(xrandr --verbose | grep -A 30 "$disp" | grep -A 16 EDID | sed "1d" | tr -d '[:space:]')
+  MODE=$(xrandr | grep -A 1 "$disp" | sed "1d" | awk '{print $1}')
 
-# monitor resolution
-for disp in "${displays[@]}"; do
-  if [[ "$disp" == "eDP" ]]; then
-    xrandr --output "$disp" \
-      --scale 1 \
-      --mode 2880x1800
-  elif [[ "$disp" == "DisplayPort"* ]]; then
-    xrandr --output "$disp" \
-      --scale 1.5 \
-      --mode 2560x1440
-  elif [[ "$disp" == "HDMI"* ]]; then
-    xrandr --output "$disp" \
-      --scale 1.5 \
-      --mode 3440x1440
+  registerd=$(jq -r --arg EDID "$EDID" '.monitors[] | select(.EDID==$EDID)' "$MONITOR_INFO_FILE")
+
+  if [[ -z "$registerd" ]]; then
+    write_field "NAME" "$disp"
+    write_field "MODE" "$MODE"
+    write_field "EDID" "$EDID"
+    write_field "POS" "0x0"
+    write_field "SCALE" "1"
+
+    write_new_monitor
   fi
-done
 
-# monitor pos
-for disp in "${displays[@]}"; do
-  if [[ "$disp" == "eDP" ]]; then
-    xrandr --output "$disp" --pos "$pos_edp"
+  scale=$(jq -r --arg EDID "$EDID" \
+    '.monitors[] | select(.EDID==$EDID) | .SCALE' "$MONITOR_INFO_FILE")
+  mode=$(jq -r --arg EDID "$EDID" \
+    '.monitors[] | select(.EDID==$EDID) | .MODE' "$MONITOR_INFO_FILE")
+  pos=$(jq -r --arg EDID "$EDID" \
+    '.monitors[] | select(.EDID==$EDID) | .POS' "$MONITOR_INFO_FILE")
+
+  if [[ "${#displays[@]}" -eq 1 ]]; then
+    xrandr --output "$disp" \
+      --scale "$scale" \
+      --mode "$mode" \
+      --pos 0x0
   else
-    xrandr --output "$disp" --pos 0x0
+    xrandr --output "$disp" \
+      --scale "$scale" \
+      --mode "$mode" \
+      --pos "$pos"
   fi
 done
 
-# edp brightness set
-brightnessctl set 100%
-
-if [[ $lid_state == 'closed' ]]; then
+if [[ $LID_STATE == 'closed' ]]; then
   xrandr --output eDP --off
+else
+  brightnessctl set 100%
 fi
 
 # wallpaper
